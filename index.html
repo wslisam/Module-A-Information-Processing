@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Information Processing - Interactive Learning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            /* 嚴格防止橫向捲動 */
+            overflow-x: hidden;
+            width: 100%;
+        }
+        .fade-enter { opacity: 0; transform: translateY(15px); }
+        .fade-enter-active { opacity: 1; transform: translateY(0); transition: opacity 400ms ease-out, transform 400ms ease-out; }
+        
+        /* 自訂美化捲動條 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* 確保所有容器不會超出螢幕寬度 */
+        * { max-width: 100vw; box-sizing: border-box; }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body x-data="appData()" class="text-slate-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="glass-effect shadow-sm z-30 shrink-0 border-b border-slate-200 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-2.5 rounded-lg shadow-md">
+                    <i class="fas fa-network-wired"></i>
+                </div>
+                <h1 class="font-bold text-lg sm:text-xl text-slate-800 truncate tracking-tight" x-text="t.title"></h1>
+            </div>
+            <div class="flex items-center gap-4 shrink-0">
+                <!-- Requirement 1: Created by Sam Li, no italics, left of lang button -->
+                <span class="text-sm text-slate-600 font-medium hidden sm:block bg-slate-100 px-3 py-1 rounded-full">Created by Sam Li</span>
+                
+                <div class="flex bg-slate-200 rounded-lg p-1 border border-slate-300 shadow-inner">
+                    <button @click="lang = 'en'" :class="lang === 'en' ? 'bg-white shadow-sm text-blue-600 font-bold' : 'text-slate-500 hover:text-slate-700'" class="px-3 py-1 text-sm rounded-md transition-all duration-200">EN</button>
+                    <button @click="lang = 'zh'" :class="lang === 'zh' ? 'bg-white shadow-sm text-blue-600 font-bold' : 'text-slate-500 hover:text-slate-700'" class="px-3 py-1 text-sm rounded-md transition-all duration-200">中文</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex overflow-hidden relative w-full">
+        
+        <!-- Sidebar Navigation (Desktop) -->
+        <nav class="w-72 bg-white border-r border-slate-200 flex-shrink-0 overflow-y-auto hidden md:flex flex-col z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+            <div class="p-5 space-y-2 flex-1">
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-2" x-text="lang === 'en' ? 'Learning Modules' : '學習模組'"></div>
+                <template x-for="(section, index) in sections" :key="index">
+                    <button @click="activeSection = index; document.getElementById('main-scroll').scrollTo({top: 0, behavior: 'smooth'});" 
+                            :class="activeSection === index ? 'bg-blue-50 text-blue-700 border-blue-600 shadow-sm' : 'text-slate-600 hover:bg-slate-50 border-transparent'"
+                            class="w-full text-left px-4 py-3.5 rounded-xl border-l-4 font-medium transition-all flex items-center gap-3 group">
+                        <div :class="activeSection === index ? section.colorClass + ' text-white shadow-md' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'" class="w-9 h-9 rounded-lg flex items-center justify-center transition-all shrink-0">
+                            <i :class="section.icon" class="text-sm"></i>
+                        </div>
+                        <div class="flex flex-col">
+                            <span x-text="section[lang].title" class="leading-tight font-bold"></span>
+                            <span x-text="section[lang].shortDesc" class="text-[11px] text-slate-400 mt-0.5 font-normal"></span>
+                        </div>
+                    </button>
+                </template>
+            </div>
+            
+            <!-- Teacher/Student Guide Note -->
+            <div class="p-5 border-t border-slate-100 bg-gradient-to-b from-slate-50 to-slate-100">
+                <div class="flex items-start gap-3">
+                    <div class="bg-amber-100 p-2 rounded-full shrink-0">
+                        <i class="fas fa-lightbulb text-amber-600"></i>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed font-medium" x-text="lang === 'en' ? 'Pay attention to the &quot;Think & Link&quot; and &quot;FAQ&quot; boxes. They are designed to spark your critical thinking!' : '請留意「思考與連結」及「常見迷思」區塊，它們能激發你的批判性思考！'"></p>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 bg-slate-50/50 relative scroll-smooth w-full" id="main-scroll">
+            <div class="max-w-5xl mx-auto pb-28 md:pb-12">
+                
+                <!-- Section 1: Information System Components -->
+                <div x-show="activeSection === 0" x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter">
+                    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+                        <div class="bg-gradient-to-r from-blue-600 to-blue-800 px-8 py-10 relative overflow-hidden">
+                            <i class="fas fa-cubes absolute -right-4 -bottom-4 text-9xl text-white opacity-10"></i>
+                            <h2 class="text-3xl sm:text-4xl font-extrabold text-white flex items-center gap-4 relative z-10">
+                                <span x-text="sections[0][lang].title"></span>
+                            </h2>
+                            <p class="text-blue-100 mt-3 text-lg max-w-2xl relative z-10" x-text="sections[0][lang].desc"></p>
+                        </div>
+                        
+                        <div class="p-6 sm:p-8 lg:p-10">
+                            <p class="text-slate-700 mb-8 leading-relaxed text-lg" x-text="lang === 'en' ? 'An Information System (IS) is much more than just a computer. It is an integrated set of 5 key components working together to collect, process, store, and distribute information to support decision-making.' : '資訊系統（IS）遠不止是一台電腦。它是5個關鍵組件的整合，這些組件協同工作以收集、處理、儲存和分發資訊，從而支援決策。'"></p>
+                            
+                            <!-- Interactive Components Selector -->
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 lg:gap-4 mb-10">
+                                <template x-for="comp in components" :key="comp.id">
+                                    <div class="bg-white rounded-2xl p-4 text-center border-2 transition-all cursor-pointer flex flex-col items-center justify-center h-36 relative overflow-hidden group"
+                                         @click="activeComponent = comp.id"
+                                         :class="activeComponent === comp.id ? 'border-blue-500 bg-blue-50 shadow-lg transform -translate-y-1' : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50 hover:shadow-md'">
+                                        <div :class="activeComponent === comp.id ? 'bg-blue-600 text-white scale-110 shadow-md' : 'bg-blue-100 text-blue-600 group-hover:scale-110'" class="w-14 h-14 rounded-full flex items-center justify-center mb-3 transition-all z-10 duration-300">
+                                            <i :class="comp.icon" class="text-2xl"></i>
+                                        </div>
+                                        <h3 class="font-bold text-sm sm:text-base text-slate-800 z-10" x-text="comp[lang].name"></h3>
+                                        <div x-show="activeComponent === comp.id" class="absolute bottom-0 left-0 w-full h-2 bg-blue-600"></div>
+                                    </div>
+                                </template>
+                            </div>
+                            
+                            <!-- Component Details -->
+                            <div class="bg-slate-50 rounded-3xl p-6 sm:p-8 lg:p-10 border border-slate-200 min-h-[280px] shadow-inner relative">
+                                <template x-for="comp in components" :key="comp.id">
+                                    <div x-show="activeComponent === comp.id" x-transition.opacity.duration.300ms>
+                                        <h4 class="font-extrabold text-3xl text-blue-900 mb-4 flex items-center gap-3">
+                                            <i :class="comp.icon" class="text-blue-600"></i> <span x-text="comp[lang].name"></span>
+                                        </h4>
+                                        <p class="text-slate-700 text-lg mb-8 leading-relaxed" x-text="comp[lang].detail"></p>
+                                        
+                                        <div class="grid md:grid-cols-2 gap-6">
+                                            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                                <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
+                                                <strong class="text-sm text-blue-700 uppercase tracking-widest flex items-center gap-2 mb-3 font-bold">
+                                                    <i class="fas fa-store bg-blue-100 p-2 rounded-lg"></i> <span x-text="lang === 'en' ? 'Example: Supermarket System' : '例子：超級市場系統'"></span>
+                                                </strong>
+                                                <p class="text-slate-800 text-base leading-relaxed" x-text="comp[lang].example"></p>
+                                            </div>
+                                            <div class="bg-red-50 p-6 rounded-2xl border border-red-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                                <div class="absolute top-0 left-0 w-1.5 h-full bg-red-500"></div>
+                                                <strong class="text-sm text-red-700 uppercase tracking-widest flex items-center gap-2 mb-3 font-bold">
+                                                    <i class="fas fa-exclamation-triangle bg-red-100 p-2 rounded-lg"></i> <span x-text="lang === 'en' ? 'What if it\'s missing?' : '如果缺少它會怎樣？'"></span>
+                                                </strong>
+                                                <p class="text-red-900 text-base font-medium leading-relaxed" x-text="comp[lang].missing"></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- FAQ Box (Teacher's Tool) -->
+                            <div class="mt-8 bg-indigo-50 border-l-4 border-indigo-500 p-6 rounded-r-2xl shadow-sm">
+                                <h4 class="font-bold text-indigo-900 flex items-center gap-2 mb-3 text-lg">
+                                    <i class="fas fa-question-circle text-indigo-600"></i> <span x-text="lang === 'en' ? 'Common Student FAQ' : '學生常見迷思'"></span>
+                                </h4>
+                                <p class="text-indigo-900 font-bold mb-2" x-text="lang === 'en' ? 'Q: Is a simple calculator an Information System?' : '問：簡單的計算機算是資訊系統嗎？'"></p>
+                                <p class="text-indigo-800 text-base leading-relaxed" x-text="lang === 'en' ? 'A: Yes! It has a Purpose (to solve math), Data (the numbers you type), Processes (addition, subtraction), Technology (the screen and microchip), and Personnel (you, pressing the buttons). Systems don\'t have to be massive computers!' : '答：是的！它有目的（解決數學問題）、數據（你輸入的數字）、過程（加減法）、技術（螢幕和微晶片）以及人員（按下按鈕的你）。系統不一定非要是大型電腦！'"></p>
+                            </div>
+
+                            <!-- Transition Guide Box -->
+                            <div class="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-6 sm:p-8 rounded-2xl shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
+                                <div>
+                                    <h4 class="font-bold text-amber-800 flex items-center gap-2 mb-2 text-xl">
+                                        <i class="fas fa-link text-amber-500"></i> <span x-text="lang === 'en' ? 'Think & Link' : '思考與連結'"></span>
+                                    </h4>
+                                    <p class="text-amber-900 text-base" x-text="lang === 'en' ? 'We know that Personnel use Technologies to handle Data. But what exactly do they DO with that data? Let\'s discover the 7 steps of Information Processing!' : '我們知道人員使用技術來處理數據。但是他們究竟對這些數據做了什麼？讓我們探索資訊處理的7個步驟！'"></p>
+                                </div>
+                                <button @click="activeSection = 1; document.getElementById('main-scroll').scrollTo({top: 0, behavior: 'smooth'});" class="shrink-0 inline-flex items-center px-6 py-3 bg-amber-500 text-white rounded-xl text-base font-bold hover:bg-amber-600 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                                    <span x-text="lang === 'en' ? 'Next: The 7 Processes' : '下一步：7個處理過程'"></span> <i class="fas fa-arrow-right ml-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Information Processes -->
+                <div x-show="activeSection === 1" x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter" style="display: none;">
+                    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+                        <div class="bg-gradient-to-r from-teal-600 to-teal-800 px-8 py-10 relative overflow-hidden">
+                            <i class="fas fa-project-diagram absolute -right-4 -bottom-4 text-9xl text-white opacity-10"></i>
+                            <h2 class="text-3xl sm:text-4xl font-extrabold text-white flex items-center gap-4 relative z-10">
+                                <span x-text="sections[1][lang].title"></span>
+                            </h2>
+                            <p class="text-teal-100 mt-3 text-lg max-w-2xl relative z-10" x-text="sections[1][lang].desc"></p>
+                        </div>
+                        
+                        <div class="p-6 sm:p-8 lg:p-10">
+                            <p class="text-slate-700 mb-8 leading-relaxed text-lg" x-text="lang === 'en' ? 'Information processing involves a series of activities. These activities can be performed by computers, but they also happen in everyday non-computer tasks! Click on each step in the flow below to see details.' : '資訊處理涉及一系列活動。這些活動可以由電腦執行，但它們也發生在日常的非電腦任務中！點擊下方流程中的每個步驟以查看詳情。'"></p>
+
+                            <!-- Process Flow (Requirement 14: One line display without horizontal scroll) -->
+                            <!-- Using flex-wrap for mobile, but lg:flex-nowrap ensures one line on large screens -->
+                            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200 mb-10 shadow-inner w-full">
+                                <div class="flex flex-wrap lg:flex-nowrap justify-center lg:justify-between items-stretch gap-3 lg:gap-2 relative w-full">
+                                    <template x-for="(proc, index) in processes" :key="index">
+                                        <div class="relative flex flex-col items-center group w-[45%] sm:w-[22%] lg:w-[13.5%] shrink-0">
+                                            <!-- The Card -->
+                                            <div class="w-full bg-white border-2 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition-all shadow-sm h-28 z-10 hover:shadow-md"
+                                                 @click="activeProcess = index; document.getElementById('process-detail').scrollIntoView({behavior: 'smooth', block: 'center'})"
+                                                 :class="activeProcess === index ? 'border-teal-500 bg-teal-50 ring-4 ring-teal-100 transform scale-105' : 'border-slate-200 hover:border-teal-300 hover:bg-slate-50'">
+                                                
+                                                <!-- Step Number Badge -->
+                                                <div class="absolute -top-3 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white shadow-sm transition-colors z-20"
+                                                     :class="activeProcess === index ? 'bg-teal-600 text-white' : 'bg-slate-200 text-slate-600 group-hover:bg-teal-200'">
+                                                     <span x-text="index + 1"></span>
+                                                </div>
+                                                
+                                                <i :class="proc.icon" class="text-2xl mb-2 transition-colors" :class="activeProcess === index ? 'text-teal-600' : 'text-slate-400 group-hover:text-teal-400'"></i>
+                                                <span class="text-xs sm:text-sm font-bold text-center leading-tight" :class="activeProcess === index ? 'text-teal-800' : 'text-slate-600'" x-text="proc[lang].name"></span>
+                                            </div>
+                                            
+                                            <!-- Flow Arrow (Hidden on mobile, visible on desktop) -->
+                                            <div x-show="index < processes.length - 1" class="hidden lg:block absolute top-1/2 -right-3 transform -translate-y-1/2 text-slate-300 z-0">
+                                                <i class="fas fa-chevron-right text-lg"></i>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                                <p class="text-center text-sm text-teal-600 font-medium mt-6 bg-teal-50 py-2 rounded-lg" x-text="lang === 'en' ? '👆 Click any step above to explore examples!' : '👆 點擊上方任何步驟以探索例子！'"></p>
+                            </div>
+
+                            <!-- Detailed Process View -->
+                            <div id="process-detail" class="bg-white rounded-3xl p-6 sm:p-8 lg:p-10 border-2 border-teal-100 shadow-lg relative overflow-hidden">
+                                <div class="absolute top-0 right-0 w-32 h-32 bg-teal-50 rounded-bl-full -z-10"></div>
+                                
+                                <div class="flex items-center gap-4 mb-6 border-b border-slate-100 pb-6">
+                                    <div class="bg-teal-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-md font-bold shrink-0 transform rotate-3">
+                                        <span x-text="activeProcess + 1"></span>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-extrabold text-3xl text-slate-800" x-text="processes[activeProcess][lang].name"></h4>
+                                        <p class="text-teal-600 font-medium mt-1" x-text="lang === 'en' ? 'Step Details' : '步驟詳情'"></p>
+                                    </div>
+                                </div>
+                                
+                                <p class="text-slate-700 text-xl mb-8 leading-relaxed font-medium" x-text="processes[activeProcess][lang].desc"></p>
+                                
+                                <div class="grid md:grid-cols-2 gap-6">
+                                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                                        <div class="absolute top-0 left-0 w-full h-1.5 bg-blue-500"></div>
+                                        <strong class="text-sm text-blue-700 uppercase tracking-widest flex items-center gap-2 mb-3 font-bold">
+                                            <i class="fas fa-desktop bg-blue-100 p-2 rounded-lg"></i> <span x-text="lang === 'en' ? 'Computer-based Example' : '電腦處理例子'"></span>
+                                        </strong>
+                                        <p class="text-slate-800 text-lg" x-text="processes[activeProcess][lang].compEx"></p>
+                                    </div>
+                                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                                        <div class="absolute top-0 left-0 w-full h-1.5 bg-emerald-500"></div>
+                                        <strong class="text-sm text-emerald-700 uppercase tracking-widest flex items-center gap-2 mb-3 font-bold">
+                                            <i class="fas fa-user bg-emerald-100 p-2 rounded-lg"></i> <span x-text="lang === 'en' ? 'Non-Computer Example' : '非電腦處理例子'"></span>
+                                        </strong>
+                                        <p class="text-slate-800 text-lg" x-text="processes[activeProcess][lang].nonCompEx"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- FAQ Box -->
+                            <div class="mt-8 bg-indigo-50 border-l-4 border-indigo-500 p-6 rounded-r-2xl shadow-sm">
+                                <h4 class="font-bold text-indigo-900 flex items-center gap-2 mb-3 text-lg">
+                                    <i class="fas fa-question-circle text-indigo-600"></i> <span x-text="lang === 'en' ? 'Common Student FAQ' : '學生常見迷思'"></span>
+                                </h4>
+                                <p class="text-indigo-900 font-bold mb-2" x-text="lang === 'en' ? 'Q: Do these 7 steps ALWAYS happen in this exact order?' : '問：這7個步驟總是按這個確切的順序發生嗎？'"></p>
+                                <p class="text-indigo-800 text-base leading-relaxed" x-text="lang === 'en' ? 'A: Not always! While this is the logical flow, steps can loop or repeat. For example, you might Store data, then Process it, then Store the result again. Or you might Transmit data to another computer for Analysis.' : '答：不一定！雖然這是邏輯流程，但步驟可以循環或重複。例如，您可能會儲存數據，然後處理它，然後再次儲存結果。或者您可能會將數據傳輸到另一台電腦進行分析。'"></p>
+                            </div>
+
+                            <!-- Transition Guide Box -->
+                            <div class="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-6 sm:p-8 rounded-2xl shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
+                                <div>
+                                    <h4 class="font-bold text-amber-800 flex items-center gap-2 mb-2 text-xl">
+                                        <i class="fas fa-link text-amber-500"></i> <span x-text="lang === 'en' ? 'Think & Link' : '思考與連結'"></span>
+                                    </h4>
+                                    <p class="text-amber-900 text-base" x-text="lang === 'en' ? 'During all these processes, we keep mentioning \'Data\' and \'Information\'. Aren\'t they the same thing? NO! Confusing them is the most common mistake.' : '在所有這些過程中，我們不斷提到「數據」和「資訊」。它們不是同一回事嗎？不是！混淆它們是最常見的錯誤。'"></p>
+                                </div>
+                                <button @click="activeSection = 2; document.getElementById('main-scroll').scrollTo({top: 0, behavior: 'smooth'});" class="shrink-0 inline-flex items-center px-6 py-3 bg-amber-500 text-white rounded-xl text-base font-bold hover:bg-amber-600 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                                    <span x-text="lang === 'en' ? 'Next: Data vs Info' : '下一步：數據與資訊'"></span> <i class="fas fa-arrow-right ml-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Data vs Information -->
+                <div x-show="activeSection === 2" x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter" style="display: none;">
+                    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+                        <div class="bg-gradient-to-r from-purple-600 to-purple-800 px-8 py-10 relative overflow-hidden">
+                            <i class="fas fa-exchange-alt absolute -right-4 -bottom-4 text-9xl text-white opacity-10"></i>
+                            <h2 class="text-3xl sm:text-4xl font-extrabold text-white flex items-center gap-4 relative z-10">
+                                <span x-text="sections[2][lang].title"></span>
+                            </h2>
+                            <p class="text-purple-100 mt-3 text-lg max-w-2xl relative z-10" x-text="sections[2][lang].desc"></p>
+                        </div>
+                        
+                        <div class="p-6 sm:p-8 lg:p-10">
+                            
+                            <!-- The Cooking Analogy (Visualized better) -->
+                            <div class="bg-slate-900 text-white rounded-3xl p-8 sm:p-10 mb-12 shadow-xl relative overflow-hidden">
+                                <div class="absolute top-0 right-0 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+                                <h3 class="text-2xl sm:text-3xl font-extrabold text-amber-400 mb-6 flex items-center gap-3 relative z-10">
+                                    <i class="fas fa-utensils bg-amber-400/20 p-3 rounded-xl"></i> 
+                                    <span x-text="lang === 'en' ? 'The Best Way to Remember: The Baking Analogy' : '最佳記憶法：烘焙比喻'"></span>
+                                </h3>
+                                <p class="mb-10 text-slate-300 text-lg relative z-10" x-text="lang === 'en' ? 'Think of Information Processing exactly like baking a cake. You cannot eat raw ingredients, just like you cannot make decisions with raw data!' : '把資訊處理想像成烤蛋糕。你不能吃生食材，就像你不能用原始數據做決定一樣！'"></p>
+                                
+                                <div class="flex flex-col md:flex-row gap-6 text-center relative z-10 items-stretch">
+                                    <div class="flex-1 bg-slate-800/80 p-8 rounded-2xl border border-slate-700 shadow-lg backdrop-blur-sm">
+                                        <i class="fas fa-egg text-6xl text-slate-400 mb-6"></i>
+                                        <h4 class="font-extrabold text-blue-400 text-2xl mb-3">Data (數據)</h4>
+                                        <p class="text-base text-slate-300">Raw ingredients (flour, eggs, sugar). Alone, they don't mean much.</p>
+                                    </div>
+                                    <div class="flex items-center justify-center py-4 md:py-0">
+                                        <i class="fas fa-arrow-right text-3xl text-slate-600 hidden md:block"></i>
+                                        <i class="fas fa-arrow-down text-3xl text-slate-600 md:hidden"></i>
+                                    </div>
+                                    <div class="flex-1 bg-slate-800/80 p-8 rounded-2xl border border-slate-700 shadow-lg backdrop-blur-sm">
+                                        <i class="fas fa-fire text-6xl text-orange-500 mb-6"></i>
+                                        <h4 class="font-extrabold text-orange-400 text-2xl mb-3">Processing (處理)</h4>
+                                        <p class="text-base text-slate-300">Mixing, organizing, and baking in the oven.</p>
+                                    </div>
+                                    <div class="flex items-center justify-center py-4 md:py-0">
+                                        <i class="fas fa-arrow-right text-3xl text-slate-600 hidden md:block"></i>
+                                        <i class="fas fa-arrow-down text-3xl text-slate-600 md:hidden"></i>
+                                    </div>
+                                    <div class="flex-1 bg-slate-800/80 p-8 rounded-2xl border border-slate-700 shadow-lg backdrop-blur-sm">
+                                        <i class="fas fa-birthday-cake text-6xl text-pink-400 mb-6"></i>
+                                        <h4 class="font-extrabold text-pink-400 text-2xl mb-3">Information (資訊)</h4>
+                                        <p class="text-base text-slate-300">A delicious cake! Structured, meaningful, and ready to consume.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Direct Comparison -->
+                            <div class="flex flex-col md:flex-row gap-8 mb-12 items-stretch">
+                                <!-- Data -->
+                                <div class="flex-1 bg-white rounded-3xl p-8 border-2 border-slate-200 relative pt-12 shadow-sm">
+                                    <div class="absolute -top-5 left-8 bg-slate-700 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg tracking-widest" x-text="lang === 'en' ? 'DATA (數據)' : '數據 (DATA)'"></div>
+                                    <p class="text-slate-700 font-medium text-lg leading-relaxed" x-text="lang === 'en' ? 'Raw, unorganized facts, figures, or symbols that lack context.' : '缺乏背景的原始、未組織的事實、數字或符號。'"></p>
+                                    <div class="mt-8 font-mono text-4xl bg-slate-50 p-6 rounded-2xl border border-slate-200 text-center shadow-inner text-slate-500 tracking-widest font-bold">
+                                        38, 39, 37
+                                    </div>
+                                    <div class="bg-slate-100 rounded-xl p-4 mt-6 flex items-start gap-3">
+                                        <i class="fas fa-question-circle text-slate-500 text-xl mt-0.5"></i>
+                                        <p class="text-base text-slate-700" x-text="lang === 'en' ? 'What do these numbers mean? Shoe sizes? Lottery numbers? Without context, they are useless.' : '這些數字是什麼意思？鞋碼？彩票號碼？沒有背景，它們是無用的。'"></p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Process Arrow -->
+                                <div class="flex items-center justify-center py-4 md:py-0 relative">
+                                    <div class="bg-purple-100 text-purple-600 w-20 h-20 rounded-full flex flex-col items-center justify-center shadow-lg border-4 border-white z-10 ring-4 ring-purple-50">
+                                        <i class="fas fa-cogs text-3xl"></i>
+                                    </div>
+                                    <div class="hidden md:block absolute w-full h-1.5 bg-slate-200 -z-10" style="left:0; top: 50%;"></div>
+                                    <div class="md:hidden absolute h-full w-1.5 bg-slate-200 -z-10" style="top:0; left: 50%;"></div>
+                                </div>
+
+                                <!-- Information -->
+                                <div class="flex-1 bg-purple-50 rounded-3xl p-8 border-2 border-purple-300 relative pt-12 shadow-sm">
+                                    <div class="absolute -top-5 left-8 bg-purple-600 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg tracking-widest" x-text="lang === 'en' ? 'INFORMATION (資訊)' : '資訊 (INFORMATION)'"></div>
+                                    <p class="text-purple-900 font-medium text-lg leading-relaxed" x-text="lang === 'en' ? 'Data that has been processed, organized, and given context to make it meaningful and useful.' : '經過處理、組織並賦予背景的數據，使其變得有意義和有用。'"></p>
+                                    <div class="mt-8 bg-white p-6 rounded-2xl border border-purple-200 text-center text-purple-700 font-bold text-2xl shadow-inner flex items-center justify-center min-h-[104px]">
+                                        <span x-text="lang === 'en' ? 'Patient\'s body temperature (°C)' : '病人的體溫（°C）'"></span>
+                                    </div>
+                                    <div class="bg-purple-200 rounded-xl p-4 mt-6 flex items-start gap-3">
+                                        <i class="fas fa-lightbulb text-purple-700 text-xl mt-0.5"></i>
+                                        <p class="text-base text-purple-900 font-bold" x-text="lang === 'en' ? 'Now it makes sense! The patient has a fever and needs medicine immediately.' : '現在有意義了！病人發燒了，需要立即吃藥。'"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-12 border-slate-200">
+
+                            <!-- Data Types -->
+                            <h3 class="font-extrabold text-3xl text-slate-800 mb-6 flex items-center gap-3">
+                                <i class="fas fa-shapes text-blue-500"></i> <span x-text="lang === 'en' ? 'The 5 Types of Multimedia Data' : '5種多媒體數據類型'"></span>
+                            </h3>
+                            <p class="text-slate-600 mb-8 text-lg" x-text="lang === 'en' ? 'Data isn\'t just numbers. In modern systems, data comes in 5 main formats:' : '數據不僅僅是數字。在現代系統中，數據有5種主要格式：'"></p>
+                            
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 lg:gap-6">
+                                <template x-for="type in dataTypes" :key="type.icon">
+                                    <div class="group flex flex-col items-center p-6 bg-white rounded-2xl border-2 border-slate-100 hover:border-blue-400 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2">
+                                        <div class="w-20 h-20 rounded-2xl bg-slate-50 group-hover:bg-blue-50 flex items-center justify-center mb-4 transition-colors border border-slate-100 group-hover:border-blue-200 shadow-sm">
+                                            <i :class="type.icon" class="text-4xl text-slate-400 group-hover:text-blue-500 transition-colors"></i>
+                                        </div>
+                                        <span class="font-extrabold text-slate-800 mb-2 text-xl" x-text="type[lang].name"></span>
+                                        <span class="text-sm text-slate-500 text-center font-medium" x-text="type[lang].eg"></span>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- FAQ Box (Relativity of Data and Info) -->
+                            <div class="mt-12 bg-indigo-50 border-l-4 border-indigo-500 p-6 rounded-r-2xl shadow-sm">
+                                <h4 class="font-bold text-indigo-900 flex items-center gap-2 mb-3 text-lg">
+                                    <i class="fas fa-brain text-indigo-600"></i> <span x-text="lang === 'en' ? 'Advanced Concept: Relativity' : '進階概念：相對性'"></span>
+                                </h4>
+                                <p class="text-indigo-900 font-bold mb-2" x-text="lang === 'en' ? 'Q: Can Information for one person be Data for another?' : '問：一個人的資訊可以是另一個人的數據嗎？'"></p>
+                                <p class="text-indigo-800 text-base leading-relaxed" x-text="lang === 'en' ? 'A: YES! A student\'s report card is Information to the student. But to the Principal, hundreds of report cards are just raw Data that need to be processed to find the school\'s overall average.' : '答：是的！學生的成績單對學生來說是資訊。但對校長來說，數百份成績單只是原始數據，需要處理才能得出學校的整體平均分。'"></p>
+                            </div>
+
+                             <!-- Transition Guide Box -->
+                             <div class="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-6 sm:p-8 rounded-2xl shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
+                                <div>
+                                    <h4 class="font-bold text-amber-800 flex items-center gap-2 mb-2 text-xl">
+                                        <i class="fas fa-link text-amber-500"></i> <span x-text="lang === 'en' ? 'Think & Link' : '思考與連結'"></span>
+                                    </h4>
+                                    <p class="text-amber-900 text-base" x-text="lang === 'en' ? 'Because we can process all these types of data so quickly today, human society has completely changed. We now live in an era where knowledge is power. What is it called?' : '因為我們今天可以如此快速地處理所有這些類型的數據，人類社會已經完全改變。我們現在生活在一個知識就是力量的時代。它叫什麼？'"></p>
+                                </div>
+                                <button @click="activeSection = 3; document.getElementById('main-scroll').scrollTo({top: 0, behavior: 'smooth'});" class="shrink-0 inline-flex items-center px-6 py-3 bg-amber-500 text-white rounded-xl text-base font-bold hover:bg-amber-600 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                                    <span x-text="lang === 'en' ? 'Next: The Information Age' : '下一步：資訊時代'"></span> <i class="fas fa-arrow-right ml-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Information Age & DIKW -->
+                <div x-show="activeSection === 3" x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter" style="display: none;">
+                    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+                        <div class="bg-gradient-to-r from-rose-600 to-rose-800 px-8 py-10 relative overflow-hidden">
+                            <i class="fas fa-globe absolute -right-4 -bottom-4 text-9xl text-white opacity-10"></i>
+                            <h2 class="text-3xl sm:text-4xl font-extrabold text-white flex items-center gap-4 relative z-10">
+                                <span x-text="sections[3][lang].title"></span>
+                            </h2>
+                            <p class="text-rose-100 mt-3 text-lg max-w-2xl relative z-10" x-text="sections[3][lang].desc"></p>
+                        </div>
+                        
+                        <div class="p-6 sm:p-8 lg:p-10">
+                            
+                            <!-- Information Age & Knowledge Society -->
+                            <div class="flex flex-col md:flex-row gap-8 items-stretch mb-12">
+                                <div class="flex-1">
+                                    <h3 class="text-3xl font-extrabold text-slate-800 mb-6 flex items-center gap-3">
+                                        <i class="fas fa-history text-rose-500"></i> <span x-text="lang === 'en' ? 'The Information Age' : '資訊時代'"></span>
+                                    </h3>
+                                    <p class="text-lg leading-relaxed mb-6 text-slate-700" x-text="t.infoAgeDesc"></p>
+                                    
+                                    <div class="bg-rose-50 border-l-4 border-rose-500 p-6 rounded-r-2xl shadow-sm">
+                                        <h4 class="font-bold text-rose-900 mb-3 text-xl" x-text="lang === 'en' ? 'The Knowledge-Based Society (知識型社會)' : '知識型社會'"></h4>
+                                        <p class="text-rose-800 text-base leading-relaxed" x-text="lang === 'en' ? 'In the past (Industrial Age), wealth came from owning factories. Today, wealth and progress come from creating, evaluating, and using knowledge. Your ability to think analytically is your most valuable asset!' : '在過去（工業時代），財富來自擁有工廠。今天，財富和進步來自創造、評估和使用知識。你的分析思考能力是你最有價值的資產！'"></p>
+                                    </div>
+                                </div>
+                                <div class="w-full md:w-1/3 bg-slate-900 text-white p-8 rounded-3xl text-center shadow-xl flex flex-col justify-center relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 w-32 h-32 bg-rose-500 rounded-full mix-blend-multiply filter blur-2xl opacity-30"></div>
+                                    <i class="fas fa-microchip text-7xl text-rose-400 mb-6 relative z-10"></i>
+                                    <p class="font-bold text-slate-200 text-lg relative z-10" x-text="lang === 'en' ? 'Technology drives the transition from the Industrial Age to the Information Age.' : '科技推動了從工業時代到資訊時代的過渡。'"></p>
+                                </div>
+                            </div>
+                            
+                            <!-- Information Literacy -->
+                            <div class="bg-white border-2 border-rose-100 p-8 sm:p-10 mb-16 rounded-3xl shadow-md relative">
+                                <div class="absolute -top-5 right-10 bg-rose-600 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-2">
+                                    <i class="fas fa-star text-yellow-300"></i> <span x-text="lang === 'en' ? 'Crucial Survival Skill' : '關鍵生存技能'"></span>
+                                </div>
+                                <h4 class="font-extrabold text-3xl text-rose-900 mb-6 flex items-center gap-4">
+                                    <i class="fas fa-book-reader bg-rose-100 p-3 rounded-xl text-rose-600"></i> <span x-text="lang === 'en' ? 'Information Literacy' : '資訊素養'"></span>
+                                </h4>
+                                <p class="text-xl mb-8 text-slate-700 font-medium" x-text="t.infoLitDesc"></p>
+                                <div class="grid sm:grid-cols-3 gap-6">
+                                    <div class="bg-rose-50 p-6 rounded-2xl border border-rose-100 flex flex-col items-center text-center gap-3 hover:bg-rose-100 transition-colors shadow-sm">
+                                        <i class="fas fa-search text-rose-600 text-4xl mb-2"></i>
+                                        <span class="font-bold text-rose-900 text-lg" x-text="lang === 'en' ? 'Search Effectively' : '有效搜尋'"></span>
+                                        <span class="text-sm text-rose-700" x-text="lang === 'en' ? 'Find exactly what you need quickly.' : '快速準確找到你需要的東西。'"></span>
+                                    </div>
+                                    <div class="bg-rose-50 p-6 rounded-2xl border border-rose-100 flex flex-col items-center text-center gap-3 hover:bg-rose-100 transition-colors shadow-sm">
+                                        <i class="fas fa-shield-alt text-rose-600 text-4xl mb-2"></i>
+                                        <span class="font-bold text-rose-900 text-lg" x-text="lang === 'en' ? 'Identify Fake News' : '辨別假新聞'"></span>
+                                        <span class="text-sm text-rose-700" x-text="lang === 'en' ? 'Evaluate if sources are true and reliable.' : '評估來源是否真實可靠。'"></span>
+                                    </div>
+                                    <div class="bg-rose-50 p-6 rounded-2xl border border-rose-100 flex flex-col items-center text-center gap-3 hover:bg-rose-100 transition-colors shadow-sm">
+                                        <i class="fas fa-copyright text-rose-600 text-4xl mb-2"></i>
+                                        <span class="font-bold text-rose-900 text-lg" x-text="lang === 'en' ? 'Respect Copyright' : '尊重版權'"></span>
+                                        <span class="text-sm text-rose-700" x-text="lang === 'en' ? 'Use information ethically and legally.' : '合乎道德且合法地使用資訊。'"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- DIKW Pyramid & Knowledge Conversion -->
+                            <h4 class="font-extrabold text-4xl text-slate-800 mb-4 text-center" x-text="lang === 'en' ? 'The DIKW Pyramid' : 'DIKW 金字塔'"></h4>
+                            <p class="text-center text-slate-600 mb-12 max-w-3xl mx-auto text-lg font-medium" x-text="lang === 'en' ? 'How does information analytically convert into knowledge and wisdom? Let\'s look at a real-world example of driving a car.' : '資訊如何透過分析轉換為知識和智慧？讓我們看一個駕駛汽車的現實生活例子。'"></p>
+                            
+                            <div class="flex flex-col lg:flex-row gap-10 items-center justify-center mb-8 bg-slate-50 p-8 sm:p-10 rounded-3xl border border-slate-200 shadow-inner">
+                                <!-- Pyramid Graphic -->
+                                <div class="w-full lg:w-1/2 flex flex-col items-center space-y-2">
+                                    <!-- Wisdom -->
+                                    <div class="w-1/3 bg-rose-700 text-white text-center py-5 rounded-t-2xl font-bold shadow-lg transition-all hover:scale-105 cursor-pointer hover:bg-rose-600 text-lg" @mouseenter="activeDikw = 3" @click="activeDikw = 3" :class="activeDikw === 3 ? 'ring-4 ring-rose-300 scale-105' : ''">
+                                        <span x-text="lang === 'en' ? 'Wisdom (智慧)' : 'Wisdom (智慧)'"></span>
+                                    </div>
+                                    <!-- Knowledge -->
+                                    <div class="w-1/2 bg-rose-500 text-white text-center py-5 font-bold shadow-lg transition-all hover:scale-105 cursor-pointer hover:bg-rose-400 text-lg relative" @mouseenter="activeDikw = 2" @click="activeDikw = 2" :class="activeDikw === 2 ? 'ring-4 ring-rose-300 scale-105' : ''">
+                                        <span x-text="lang === 'en' ? 'Knowledge (知識)' : 'Knowledge (知識)'"></span>
+                                        <div class="absolute -right-16 top-1/2 transform -translate-y-1/2 text-xs text-rose-600 font-bold hidden sm:block">
+                                            <i class="fas fa-arrow-left"></i> Analysis
+                                        </div>
+                                    </div>
+                                    <!-- Information -->
+                                    <div class="w-3/4 bg-rose-400 text-white text-center py-5 font-bold shadow-lg transition-all hover:scale-105 cursor-pointer hover:bg-rose-300 text-lg" @mouseenter="activeDikw = 1" @click="activeDikw = 1" :class="activeDikw === 1 ? 'ring-4 ring-rose-200 scale-105' : ''">
+                                        <span x-text="lang === 'en' ? 'Information (資訊)' : 'Information (資訊)'"></span>
+                                    </div>
+                                    <!-- Data -->
+                                    <div class="w-full bg-rose-200 text-rose-900 text-center py-5 rounded-b-2xl font-bold shadow-lg transition-all hover:scale-105 cursor-pointer hover:bg-rose-100 text-lg" @mouseenter="activeDikw = 0" @click="activeDikw = 0" :class="activeDikw === 0 ? 'ring-4 ring-rose-300 scale-105' : ''">
+                                        <span x-text="lang === 'en' ? 'Data (數據)' : 'Data (數據)'"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Pyramid Explanation Box -->
+                                <div class="w-full lg:w-1/2 bg-white p-8 rounded-2xl shadow-xl min-h-[260px] flex flex-col justify-center border-l-8 transition-colors duration-300" :class="dikwColors[activeDikw]">
+                                    <h5 class="font-extrabold text-3xl mb-4" :class="dikwTextColors[activeDikw]" x-text="dikw[activeDikw][lang].title"></h5>
+                                    <p class="text-slate-700 mb-6 text-lg font-medium" x-text="dikw[activeDikw][lang].def"></p>
+                                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                                        <span class="text-sm text-slate-500 uppercase tracking-widest block mb-2 font-bold" x-text="lang === 'en' ? 'Real-world Example:' : '現實生活例子：'"></span>
+                                        <span class="font-bold text-xl text-slate-800" x-text="dikw[activeDikw][lang].example"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-center text-sm text-rose-600 font-bold bg-rose-50 py-2 rounded-lg max-w-md mx-auto" x-text="lang === 'en' ? '👆 Hover over or tap the pyramid layers!' : '👆 將滑鼠懸停或點擊金字塔層！'"></p>
+
+                            <!-- Transition Guide Box -->
+                            <div class="mt-16 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-8 rounded-3xl shadow-md text-center">
+                                <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-amber-100 text-amber-500 mb-6 shadow-inner">
+                                    <i class="fas fa-tasks text-4xl"></i>
+                                </div>
+                                <h4 class="font-extrabold text-amber-900 mb-4 text-3xl" x-text="lang === 'en' ? 'Ready to test your knowledge?' : '準備好測試你的知識了嗎？'"></h4>
+                                <p class="text-amber-800 mb-8 text-lg max-w-2xl mx-auto" x-text="lang === 'en' ? 'You have completed all the learning materials. Let\'s see how much you remember in the Knowledge Check! Detailed explanations are provided to help you learn from mistakes.' : '你已經完成了所有學習材料。讓我們在知識測驗中看看你記住了多少！我們提供詳細解釋，幫助你從錯誤中學習。'"></p>
+                                <button @click="activeSection = 4; document.getElementById('main-scroll').scrollTo({top: 0, behavior: 'smooth'});" class="inline-flex items-center px-8 py-4 bg-amber-500 text-white rounded-2xl text-xl font-bold hover:bg-amber-600 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                                    <span x-text="lang === 'en' ? 'Start Final Quiz' : '開始最終測驗'"></span> <i class="fas fa-play ml-3"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 5: Quiz -->
+                <div x-show="activeSection === 4" x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter" style="display: none;">
+                    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+                        <div class="bg-gradient-to-r from-amber-500 to-orange-500 px-8 py-10 relative overflow-hidden">
+                            <i class="fas fa-clipboard-check absolute -right-4 -bottom-4 text-9xl text-white opacity-10"></i>
+                            <h2 class="text-3xl sm:text-4xl font-extrabold text-white flex items-center gap-4 relative z-10">
+                                <span x-text="sections[4][lang].title"></span>
+                            </h2>
+                            <p class="text-amber-100 mt-3 text-lg max-w-2xl relative z-10" x-text="sections[4][lang].desc"></p>
+                        </div>
+                        
+                        <div class="p-6 sm:p-8 lg:p-10">
+                            <div x-show="!quizCompleted">
+                                <!-- Progress Bar -->
+                                <div class="w-full bg-slate-100 rounded-full h-5 mb-10 overflow-hidden border border-slate-200 shadow-inner">
+                                    <div class="bg-amber-500 h-5 rounded-full transition-all duration-500 relative" :style="`width: ${(currentQuestion / questions.length) * 100}%`">
+                                        <div class="absolute inset-0 bg-white/20" style="background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent); background-size: 1rem 1rem;"></div>
+                                    </div>
+                                </div>
+
+                                <div class="flex justify-between items-end mb-6">
+                                    <h3 class="text-xl font-bold text-slate-400 uppercase tracking-widest">
+                                        <span x-text="lang === 'en' ? 'Question ' : '問題 '"></span>
+                                        <span x-text="currentQuestion + 1" class="text-amber-500 text-2xl"></span> / <span x-text="questions.length"></span>
+                                    </h3>
+                                </div>
+                                
+                                <p class="text-2xl sm:text-3xl mb-10 text-slate-800 font-extrabold leading-tight" x-text="questions[currentQuestion][lang].q"></p>
+                                
+                                <div class="space-y-4">
+                                    <template x-for="(opt, idx) in questions[currentQuestion][lang].options" :key="idx">
+                                        <button @click="selectAnswer(idx)"
+                                                :disabled="showExplanation"
+                                                class="w-full text-left p-6 rounded-2xl border-2 transition-all flex items-center group"
+                                                :class="[
+                                                    selectedAnswer === idx && !showExplanation ? 'border-amber-500 bg-amber-50 shadow-md transform scale-[1.01]' : 'border-slate-200',
+                                                    !showExplanation && selectedAnswer !== idx ? 'hover:border-amber-300 hover:bg-slate-50' : '',
+                                                    showExplanation && idx === questions[currentQuestion].correct ? 'border-green-500 bg-green-50 ring-2 ring-green-200' : '',
+                                                    showExplanation && selectedAnswer === idx && idx !== questions[currentQuestion].correct ? 'border-red-500 bg-red-50' : '',
+                                                    showExplanation ? 'cursor-default' : 'cursor-pointer'
+                                                ]">
+                                            <span class="inline-flex w-12 h-12 rounded-xl items-center justify-center mr-5 font-bold shrink-0 transition-colors text-xl"
+                                                  :class="[
+                                                      selectedAnswer === idx && !showExplanation ? 'bg-amber-500 text-white shadow-md' : 'bg-slate-100 text-slate-500 group-hover:bg-amber-200 group-hover:text-amber-800',
+                                                      showExplanation && idx === questions[currentQuestion].correct ? 'bg-green-500 text-white shadow-md' : '',
+                                                      showExplanation && selectedAnswer === idx && idx !== questions[currentQuestion].correct ? 'bg-red-500 text-white shadow-md' : ''
+                                                  ]"
+                                                  x-text="String.fromCharCode(65 + idx)"></span>
+                                            <span class="text-xl font-medium text-slate-700" :class="showExplanation && idx === questions[currentQuestion].correct ? 'text-green-900 font-bold' : ''" x-text="opt"></span>
+                                            
+                                            <!-- Result Icons -->
+                                            <i x-show="showExplanation && idx === questions[currentQuestion].correct" class="fas fa-check-circle text-green-500 text-4xl ml-auto drop-shadow-sm"></i>
+                                            <i x-show="showExplanation && selectedAnswer === idx && idx !== questions[currentQuestion].correct" class="fas fa-times-circle text-red-500 text-4xl ml-auto drop-shadow-sm"></i>
+                                        </button>
+                                    </template>
+                                </div>
+
+                                <!-- Explanation Box -->
+                                <div x-show="showExplanation" x-transition.opacity.duration.500ms class="mt-10 p-8 rounded-2xl border-2 shadow-md relative overflow-hidden"
+                                     :class="selectedAnswer === questions[currentQuestion].correct ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'">
+                                    <div class="absolute top-0 left-0 w-3 h-full" :class="selectedAnswer === questions[currentQuestion].correct ? 'bg-green-500' : 'bg-red-500'"></div>
+                                    <h4 class="font-extrabold text-2xl mb-4 flex items-center gap-3" :class="selectedAnswer === questions[currentQuestion].correct ? 'text-green-800' : 'text-red-800'">
+                                        <i :class="selectedAnswer === questions[currentQuestion].correct ? 'fas fa-check-circle' : 'fas fa-exclamation-circle'"></i>
+                                        <span x-text="selectedAnswer === questions[currentQuestion].correct ? (lang === 'en' ? 'Correct!' : '正確！') : (lang === 'en' ? 'Incorrect.' : '不正確。')"></span>
+                                    </h4>
+                                    <p class="text-slate-700 text-lg leading-relaxed font-medium" x-text="questions[currentQuestion][lang].explanation"></p>
+                                </div>
+
+                                <div class="mt-10 flex justify-end">
+                                    <button x-show="!showExplanation" 
+                                            @click="submitAnswer()"
+                                            :disabled="selectedAnswer === null"
+                                            class="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-10 py-4 rounded-2xl font-bold text-xl transition-all shadow-lg transform active:scale-95"
+                                            x-text="lang === 'en' ? 'Check Answer' : '檢查答案'"></button>
+                                    
+                                    <button x-show="showExplanation" 
+                                            @click="nextQuestion()"
+                                            class="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 rounded-2xl font-bold text-xl transition-all shadow-lg flex items-center gap-3 transform active:scale-95">
+                                        <span x-text="currentQuestion < questions.length - 1 ? (lang === 'en' ? 'Next Question' : '下一題') : (lang === 'en' ? 'See Final Results' : '查看最終結果')"></span>
+                                        <i class="fas fa-arrow-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div x-show="quizCompleted" class="text-center py-16" x-transition>
+                                <div class="inline-flex items-center justify-center w-40 h-40 rounded-full mb-8 shadow-2xl border-8 border-white ring-8"
+                                     :class="score === questions.length ? 'bg-green-100 text-green-500 ring-green-100' : (score >= questions.length/2 ? 'bg-amber-100 text-amber-500 ring-amber-100' : 'bg-red-100 text-red-500 ring-red-100')">
+                                    <i :class="score === questions.length ? 'fas fa-crown' : (score >= questions.length/2 ? 'fas fa-trophy' : 'fas fa-book-open')" class="text-7xl"></i>
+                                </div>
+                                <h3 class="text-5xl font-extrabold text-slate-800 mb-6" x-text="lang === 'en' ? 'Quiz Completed!' : '測驗完成！'"></h3>
+                                <p class="text-3xl text-slate-600 mb-10">
+                                    <span x-text="lang === 'en' ? 'Your final score: ' : '你的最終分數：'"></span>
+                                    <strong class="text-6xl ml-3" :class="score === questions.length ? 'text-green-600' : (score >= questions.length/2 ? 'text-amber-600' : 'text-red-600')" x-text="score + ' / ' + questions.length"></strong>
+                                </p>
+                                
+                                <div class="bg-slate-50 p-8 rounded-3xl border-2 border-slate-200 mb-12 inline-block text-left max-w-2xl shadow-md">
+                                    <p class="text-slate-700 font-medium text-xl text-center leading-relaxed" x-text="score === questions.length ? 
+                                        (lang === 'en' ? 'Perfect! You have a complete and solid understanding of Information Processing. You are ready for the Information Age!' : '完美！你對資訊處理有完整且紮實的理解。你已經為資訊時代做好了準備！') : 
+                                        (lang === 'en' ? 'Good effort! Review the sections you missed, remember the Baking Analogy, and try again to get a perfect score.' : '做得好！複習你錯過的部分，記住烘焙比喻，然後再試一次以獲得滿分。')"></p>
+                                </div>
+                                <br>
+                                <button @click="resetQuiz()" class="bg-amber-500 hover:bg-amber-600 text-white px-10 py-5 rounded-2xl font-bold text-xl transition-transform hover:scale-105 shadow-xl inline-flex items-center gap-3">
+                                    <i class="fas fa-redo"></i> <span x-text="lang === 'en' ? 'Try Again' : '再試一次'"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Mobile Navigation (Bottom) -->
+    <div class="md:hidden bg-white border-t border-slate-200 flex justify-around p-2 shrink-0 z-30 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] pb-safe">
+        <template x-for="(section, index) in sections" :key="index">
+            <button @click="activeSection = index; document.getElementById('main-scroll').scrollTo({top: 0, behavior: 'smooth'});" 
+                    :class="activeSection === index ? 'text-blue-600 scale-110' : 'text-slate-400 hover:text-slate-600'"
+                    class="flex flex-col items-center p-2 transition-all w-1/5">
+                <i :class="section.icon" class="text-2xl mb-1"></i>
+                <span class="text-[10px] font-bold text-center leading-tight" x-text="section[lang].shortTitle"></span>
+            </button>
+        </template>
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('appData', () => ({
+                lang: 'en',
+                activeSection: 0,
+                activeComponent: 'purposes',
+                activeProcess: 0,
+                activeDikw: 0,
+                
+                // Quiz state
+                currentQuestion: 0,
+                selectedAnswer: null,
+                showExplanation: false,
+                score: 0,
+                quizCompleted: false,
+
+                get t() {
+                    return {
+                        title: this.lang === 'en' ? 'Information Processing' : '資訊處理簡介',
+                        infoAgeDesc: this.lang === 'en' ? 'The Information Age is a historical period beginning in the mid-20th century. It is characterized by a rapid shift from traditional industry (like factories and farming) to an economy primarily based on information technology and computers.' : '資訊時代始於20世紀中葉。其特徵是從傳統工業（如工廠和農業）快速轉變為主要以資訊科技和電腦為基礎的經濟。',
+                        infoLitDesc: this.lang === 'en' ? 'Information literacy is the ability to know when you need information, and to be able to identify, locate, evaluate, and effectively use that information. In a world full of fake news, this is essential!' : '資訊素養是指知道何時需要資訊，並能夠識別、定位、評估和有效地使用該資訊的能力。在一個充滿假新聞的世界裡，這是必不可少的！'
+                    }
+                },
+
+                sections: [
+                    {
+                        icon: 'fas fa-cubes', colorClass: 'bg-blue-600',
+                        en: { title: 'System Components', shortTitle: 'Components', shortDesc: 'The 5 parts of an IS', desc: 'Identify and examine the 5 components of an information system.' },
+                        zh: { title: '系統組件', shortTitle: '組件', shortDesc: '資訊系統的5個部分', desc: '識別並檢查資訊系統的5個組件。' }
+                    },
+                    {
+                        icon: 'fas fa-project-diagram', colorClass: 'bg-teal-600',
+                        en: { title: 'Information Processes', shortTitle: 'Processes', shortDesc: 'The 7 steps of processing', desc: 'Distinguish between the 7 steps of information processing.' },
+                        zh: { title: '資訊處理過程', shortTitle: '過程', shortDesc: '處理的7個步驟', desc: '區分資訊處理的7個步驟。' }
+                    },
+                    {
+                        icon: 'fas fa-exchange-alt', colorClass: 'bg-purple-600',
+                        en: { title: 'Data vs Information', shortTitle: 'Data/Info', shortDesc: 'Understand the difference', desc: 'Realise the crucial difference between them and identify data types.' },
+                        zh: { title: '數據與資訊', shortTitle: '數據/資訊', shortDesc: '了解它們的區別', desc: '了解它們之間關鍵的區別並識別數據類型。' }
+                    },
+                    {
+                        icon: 'fas fa-globe', colorClass: 'bg-rose-600',
+                        en: { title: 'Information Age', shortTitle: 'Info Age', shortDesc: 'Literacy and DIKW', desc: 'Define Information Age and discuss information literacy.' },
+                        zh: { title: '資訊時代', shortTitle: '資訊時代', shortDesc: '素養與DIKW金字塔', desc: '定義資訊時代並討論資訊素養。' }
+                    },
+                    {
+                        icon: 'fas fa-clipboard-check', colorClass: 'bg-amber-500',
+                        en: { title: 'Knowledge Check', shortTitle: 'Quiz', shortDesc: 'Test your understanding', desc: 'Test your understanding with detailed explanations.' },
+                        zh: { title: '知識測驗', shortTitle: '測驗', shortDesc: '測試你的理解程度', desc: '透過詳細解釋測試你的理解程度。' }
+                    }
+                ],
+
+                components: [
+                    { id: 'purposes', icon: 'fas fa-bullseye', en: { name: 'Purposes', detail: 'The goals or objectives the system is designed to achieve. Without a clear purpose, the system is useless.', example: 'To quickly calculate the total price of groceries and manage inventory.', missing: 'The system has no direction. People won\'t know what it is built for or how to use it.' }, zh: { name: '目的', detail: '系統設計旨在實現的目標。沒有明確的目的，系統就毫無用處。', example: '快速計算雜貨的總價並管理庫存。', missing: '系統沒有方向。人們不知道它是為了解決什麼問題而建立的，也不知道如何使用。' } },
+                    { id: 'data', icon: 'fas fa-database', en: { name: 'Data', detail: 'The raw input material that the system processes. It can be text, numbers, images, audio, or video.', example: 'The barcodes on the products and the quantity being bought.', missing: 'The system has nothing to process. It is like an oven with no ingredients.' }, zh: { name: '數據', detail: '系統處理的原始輸入材料。它可以是文字、數字、圖像、音訊或視訊。', example: '產品上的條碼和購買的數量。', missing: '系統沒有東西可以處理。就像一個沒有食材的烤箱。' } },
+                    { id: 'processes', icon: 'fas fa-cogs', en: { name: 'Processes', detail: 'The specific steps taken to convert raw data into meaningful information.', example: 'Scanning the barcode, looking up the price in the database, and adding it to the total.', missing: 'Data remains raw and useless. No information is ever created.' }, zh: { name: '過程', detail: '將原始數據轉換為有意義資訊的具體步驟。', example: '掃描條碼、在數據庫中查找價格並將其加到總數中。', missing: '數據仍然是原始且無用的。永遠不會產生任何資訊。' } },
+                    { id: 'tech', icon: 'fas fa-laptop-code', en: { name: 'Technologies', detail: 'The hardware (physical devices) and software (programs) used to process the data efficiently.', example: 'Barcode scanner, cash register (hardware), and the POS system (software).', missing: 'Tasks must be done manually with paper and pen, which is very slow and prone to errors.' }, zh: { name: '技術', detail: '用於高效處理數據的硬件（實體設備）和軟件（程式）。', example: '條碼掃描器、收銀機（硬件）和 POS 系統（軟件）。', missing: '任務必須用筆和紙手動完成，這非常緩慢且容易出錯。' } },
+                    { id: 'personnel', icon: 'fas fa-users', en: { name: 'Personnel', detail: 'The people who operate, manage, maintain, and use the system.', example: 'The cashier scanning the items and the manager checking daily sales.', missing: 'The system sits idle. There is no one to input data or use the output information.' }, zh: { name: '人員', detail: '操作、管理、維護和使用系統的人。', example: '掃描物品的收銀員和檢查每日銷售額的經理。', missing: '系統閒置。沒有人輸入數據或使用輸出的資訊。' } }
+                ],
+
+                processes: [
+                    { icon: 'fas fa-inbox', en: { name: 'Collection', desc: 'Gathering raw data from various sources to enter into the system.', compEx: 'Scanning a QR code to record attendance.', nonCompEx: 'A teacher collecting homework papers from students.' }, zh: { name: '收集', desc: '從各種來源收集原始數據以輸入系統。', compEx: '掃描 QR code 以記錄出席情況。', nonCompEx: '老師向學生收集作業紙。' } },
+                    { icon: 'fas fa-folder-open', en: { name: 'Organisation', desc: 'Arranging data into a structured format so it is easy to find and use.', compEx: 'Sorting a digital list of student names alphabetically.', nonCompEx: 'Putting library books on shelves according to their genre.' }, zh: { name: '組織', desc: '將數據整理成結構化格式，以便於查找和使用。', compEx: '按字母順序對學生名單進行數位排序。', nonCompEx: '根據類型將圖書館的書放在書架上。' } },
+                    { icon: 'fas fa-microchip', en: { name: 'Processing', desc: 'Performing calculations or logical operations on the data.', compEx: 'A CPU calculating the total price of items in a shopping cart.', nonCompEx: 'A human brain adding up numbers on a restaurant bill.' }, zh: { name: '處理', desc: '對數據執行計算或邏輯操作。', compEx: 'CPU 計算購物車中物品的總價。', nonCompEx: '人腦計算餐廳帳單上的數字。' } },
+                    { icon: 'fas fa-chart-line', en: { name: 'Analysis', desc: 'Examining data in detail to find patterns, trends, or meaning.', compEx: 'Software finding out which product sells the most in winter.', nonCompEx: 'A coach reviewing game footage to find a team\'s weakness.' }, zh: { name: '分析', desc: '詳細檢查數據以尋找模式、趨勢或意義。', compEx: '軟件找出冬季銷量最高的產品。', nonCompEx: '教練查看比賽錄像以尋找球隊的弱點。' } },
+                    { icon: 'fas fa-hdd', en: { name: 'Storage', desc: 'Saving data and information securely for future use.', compEx: 'Saving a Word document to a hard drive or Cloud.', nonCompEx: 'Filing paper documents into a locked filing cabinet.' }, zh: { name: '儲存', desc: '安全地保存數據和資訊以供將來使用。', compEx: '將 Word 文件保存到硬碟或雲端。', nonCompEx: '將紙質文件歸檔到上鎖的文件櫃中。' } },
+                    { icon: 'fas fa-paper-plane', en: { name: 'Transmission', desc: 'Sending information from one place or person to another.', compEx: 'Sending an email across the internet.', nonCompEx: 'Mailing a physical letter through the post office.' }, zh: { name: '傳輸', desc: '將資訊從一個地方或人發送到另一個地方或人。', compEx: '透過互聯網發送電子郵件。', nonCompEx: '透過郵局寄送實體信件。' } },
+                    { icon: 'fas fa-tv', en: { name: 'Presentation', desc: 'Displaying information in a format that humans can easily understand.', compEx: 'Showing a colorful pie chart on a computer monitor.', nonCompEx: 'Drawing a graph on a classroom whiteboard.' }, zh: { name: '展示', desc: '以人類容易理解的格式顯示資訊。', compEx: '在電腦顯示器上顯示彩色的圓餅圖。', nonCompEx: '在教室白板上畫圖表。' } }
+                ],
+
+                dataTypes: [
+                    { icon: 'fas fa-font', en: {name: 'Text', eg: 'Letters, Words'}, zh: {name: '文字', eg: '字母、單詞'} },
+                    { icon: 'fas fa-hashtag', en: {name: 'Number', eg: 'Integers, Decimals'}, zh: {name: '數字', eg: '整數、小數'} },
+                    { icon: 'fas fa-image', en: {name: 'Image', eg: 'Photos, Drawings'}, zh: {name: '圖像', eg: '照片、繪圖'} },
+                    { icon: 'fas fa-volume-up', en: {name: 'Audio', eg: 'Music, Voice'}, zh: {name: '音訊', eg: '音樂、語音'} },
+                    { icon: 'fas fa-video', en: {name: 'Video', eg: 'Movies, Clips'}, zh: {name: '視訊', eg: '電影、片段'} }
+                ],
+
+                dikwColors: ['border-rose-200', 'border-rose-400', 'border-rose-500', 'border-rose-700'],
+                dikwTextColors: ['text-rose-400', 'text-rose-500', 'text-rose-600', 'text-rose-800'],
+                dikw: [
+                    { en: { title: 'Data (數據)', def: 'Raw, unorganized facts without context.', example: 'The number "100" and a red circle.' }, zh: { title: 'Data (數據)', def: '沒有背景的原始、未組織的事實。', example: '數字「100」和一個紅圈。' } },
+                    { en: { title: 'Information (資訊)', def: 'Data given context and meaning.', example: 'A road sign showing a 100 km/h speed limit.' }, zh: { title: 'Information (資訊)', def: '被賦予背景和意義的數據。', example: '顯示 100 km/h 速度限制的道路標誌。' } },
+                    { en: { title: 'Knowledge (知識)', def: 'Understanding the rules and patterns derived from analyzing information.', example: 'Knowing that driving at 120 km/h in this zone is illegal and dangerous.' }, zh: { title: 'Knowledge (知識)', def: '理解從分析資訊中得出的規則和模式。', example: '知道在這個區域以 120 km/h 的速度駕駛是非法且危險的。' } },
+                    { en: { title: 'Wisdom (智慧)', def: 'Applying knowledge to make good, ethical decisions.', example: 'Deciding to slow down the car to 100 km/h to stay safe and avoid a ticket.' }, zh: { title: 'Wisdom (智慧)', def: '應用知識做出良好、道德的決定。', example: '決定將車速減慢至 100 km/h 以保持安全並避免罰單。' } }
+                ],
+
+                questions: [
+                    {
+                        en: {
+                            q: 'Which of the following is an example of "Data" rather than "Information"?',
+                            options: ['A list of student grades sorted from highest to lowest', 'The number "42" written on a blank piece of paper', 'A graph showing monthly temperature changes', 'A weather forecast for tomorrow'],
+                            explanation: 'The number "42" lacks context. We don\'t know if it means age, size, or score. The other options are organized and have meaning, making them Information.'
+                        },
+                        zh: {
+                            q: '以下哪項是「數據」而不是「資訊」的例子？',
+                            options: ['從高到低排序的學生成績單', '寫在空白紙上的數字「42」', '顯示每月溫度變化的圖表', '明天的天氣預報'],
+                            explanation: '數字「42」缺乏背景。我們不知道它指的是年齡、大小還是分數。其他選項都經過組織並具有意義，因此屬於資訊。'
+                        },
+                        correct: 1
+                    },
+                    {
+                        en: {
+                            q: 'A teacher arranging test papers alphabetically by student name is an example of which information process?',
+                            options: ['Collection', 'Organisation', 'Storage', 'Transmission'],
+                            explanation: 'Arranging or sorting items into a structured format (like alphabetical order) is the "Organisation" process.'
+                        },
+                        zh: {
+                            q: '老師按學生姓名首字母順序排列試卷是哪種資訊處理過程的例子？',
+                            options: ['收集', '組織', '儲存', '傳輸'],
+                            explanation: '將項目排列或分類成結構化格式（如按字母順序）屬於「組織」過程。'
+                        },
+                        correct: 1
+                    },
+                    {
+                        en: {
+                            q: 'Which component of an Information System refers to the people who operate and use it?',
+                            options: ['Technologies', 'Processes', 'Personnel', 'Purposes'],
+                            explanation: 'Personnel refers to the humans involved in the system, such as users, administrators, and technicians. Without them, the system sits idle.'
+                        },
+                        zh: {
+                            q: '資訊系統的哪個組件是指操作和使用它的人？',
+                            options: ['技術', '過程', '人員', '目的'],
+                            explanation: '人員（Personnel）是指參與系統的人類，例如使用者、管理員和技術人員。沒有他們，系統就會閒置。'
+                        },
+                        correct: 2
+                    },
+                    {
+                        en: {
+                            q: 'Why is Information Literacy considered a crucial skill in a "Knowledge-Based Society"?',
+                            options: ['Because it helps you type faster on a keyboard.', 'Because wealth and progress now depend on evaluating and using knowledge effectively.', 'Because it allows you to build computer hardware.', 'Because it helps you memorize raw data without context.'],
+                            explanation: 'In a knowledge-based society, information is the most valuable resource. Being able to find, evaluate (like spotting fake news), and use information ethically is essential for success.'
+                        },
+                        zh: {
+                            q: '為什麼在「知識型社會」中，資訊素養被認為是一項關鍵技能？',
+                            options: ['因為它可以幫助你在鍵盤上打字更快。', '因為現在的財富和進步取決於有效地評估和使用知識。', '因為它允許你構建電腦硬體。', '因為它幫助你在沒有背景的情況下記住原始數據。'],
+                            explanation: '在知識型社會中，資訊是最有價值的資源。能夠尋找、評估（如辨別假新聞）並合乎道德地使用資訊是成功的關鍵。'
+                        },
+                        correct: 1
+                    },
+                    {
+                        en: {
+                            q: 'Can Information for one person be considered Data for another person?',
+                            options: ['No, data and information are strictly fixed.', 'Yes, because information can be used as raw input (data) for further processing by someone else.', 'No, once data becomes information, it can never change.', 'Yes, but only if it is converted into numbers.'],
+                            explanation: 'Yes! For example, a student\'s report card is Information to them. But to the Principal, hundreds of report cards are just raw Data that need to be processed to find the school\'s overall average.'
+                        },
+                        zh: {
+                            q: '一個人的資訊可以被視為另一個人的數據嗎？',
+                            options: ['不可以，數據和資訊是嚴格固定的。', '可以，因為資訊可以作為原始輸入（數據）供其他人進一步處理。', '不可以，一旦數據變成資訊，它就永遠不會改變。', '可以，但前提是它被轉換成數字。'],
+                            explanation: '可以！例如，學生的成績單對他們來說是資訊。但對校長來說，數百份成績單只是原始數據，需要處理才能得出學校的整體平均分。'
+                        },
+                        correct: 1
+                    }
+                ],
+
+                selectAnswer(idx) {
+                    if (!this.showExplanation) {
+                        this.selectedAnswer = idx;
+                    }
+                },
+
+                submitAnswer() {
+                    this.showExplanation = true;
+                    if (this.selectedAnswer === this.questions[this.currentQuestion].correct) {
+                        this.score++;
+                    }
+                },
+
+                nextQuestion() {
+                    if (this.currentQuestion < this.questions.length - 1) {
+                        this.currentQuestion++;
+                        this.selectedAnswer = null;
+                        this.showExplanation = false;
+                    } else {
+                        this.quizCompleted = true;
+                    }
+                },
+
+                resetQuiz() {
+                    this.currentQuestion = 0;
+                    this.selectedAnswer = null;
+                    this.showExplanation = false;
+                    this.score = 0;
+                    this.quizCompleted = false;
+                    this.activeSection = 0; // Go back to start
+                    setTimeout(() => { this.activeSection = 4; }, 100);
+                }
+            }));
+        });
+    </script>
+</body>
+</html>
